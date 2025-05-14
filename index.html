@@ -1,513 +1,618 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Expense Tracker</title>
     <style>
-        body {
-            background-color: #f3f4f6;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 10px;
-        }
-        .container {
-            max-width: 100%;
-            width: 400px;
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            box-sizing: border-box;
-        }
-        h1 {
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-        .tabs {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            color: #6b7280;
-            font-size: 0.9rem;
-            text-align: center;
-        }
-        .tab.active {
-            color: #3b82f6;
-            border-bottom: 2px solid #3b82f6;
-            font-weight: 600;
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 1rem;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-        button:hover {
-            background-color: #2563eb;
-        }
-        .expense-list, .stats-list {
-            margin-bottom: 1rem;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .expense-list h2, .stats-list h2 {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        .expense-item, .stats-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-top: 1px solid #e5e7eb;
-        }
-        .expense-item p, .stats-item p {
-            margin: 0;
-        }
-        .expense-item .name {
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-        .expense-item .category {
-            font-size: 0.8rem;
-            color: #6b7280;
-        }
-        .expense-item .amount, .stats-item .amount {
-            color: #ef4444;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-        .expense-item .delete {
-            color: #dc2626;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-        .expense-item .delete:hover {
-            color: #991b1b;
-        }
-        .total {
-            text-align: center;
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-top: 1rem;
-        }
-        .total span {
-            color: #ef4444;
-        }
-        .no-expenses, .no-stats {
-            color: #6b7280;
-            text-align: center;
-            font-size: 0.9rem;
-        }
+      body {
+        background-color: #f3f4f6;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 10px;
+      }
+      .container {
+        max-width: 100%;
+        width: 400px;
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        box-sizing: border-box;
+      }
+      h1 {
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 1rem;
+      }
+      .tabs {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+      .tab {
+        padding: 10px 20px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        color: #6b7280;
+        font-size: 0.9rem;
+        text-align: center;
+      }
+      .tab.active {
+        color: #3b82f6;
+        border-bottom: 2px solid #3b82f6;
+        font-weight: 600;
+      }
+      .form-group {
+        margin-bottom: 1rem;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 1rem;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background-color: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      button:hover {
+        background-color: #2563eb;
+      }
+      .expense-list,
+      .stats-list {
+        margin-bottom: 1rem;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .expense-list h2,
+      .stats-list h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+      .expense-item,
+      .stats-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-top: 1px solid #e5e7eb;
+      }
+      .expense-item p,
+      .stats-item p {
+        margin: 0;
+      }
+      .expense-item .name {
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+      .expense-item .category {
+        font-size: 0.8rem;
+        color: #6b7280;
+      }
+      .expense-item .amount,
+      .stats-item .amount {
+        color: #ef4444;
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+      .expense-item .delete {
+        color: #dc2626;
+        cursor: pointer;
+        font-size: 0.8rem;
+      }
+      .expense-item .delete:hover {
+        color: #991b1b;
+      }
+      .total {
+        text-align: center;
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-top: 1rem;
+      }
+      .total span {
+        color: #ef4444;
+      }
+      .no-expenses,
+      .no-stats {
+        color: #6b7280;
+        text-align: center;
+        font-size: 0.9rem;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="root"></div>
 
     <script type="module">
-        import * as React from 'https://esm.sh/react@18.2.0';
-        import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+      import * as React from "https://esm.sh/react@18.2.0";
+      import { createRoot } from "https://esm.sh/react-dom@18.2.0/client";
 
-        const { useState, useEffect } = React;
+      const { useState, useEffect } = React;
 
-        const ExpenseTracker = () => {
-            const [expenses, setExpenses] = useState([]);
-            const [name, setName] = useState('');
-            const [amount, setAmount] = useState('');
-            const [category, setCategory] = useState('Food');
-            const [activeTab, setActiveTab] = useState('list');
-            const [selectedMonth, setSelectedMonth] = useState('');
+      const ExpenseTracker = () => {
+        const [expenses, setExpenses] = useState([]);
+        const [name, setName] = useState("");
+        const [amount, setAmount] = useState("");
+        const [category, setCategory] = useState("Food");
+        const [activeTab, setActiveTab] = useState("list");
+        const [selectedMonth, setSelectedMonth] = useState("");
+        const [selectedDay, setSelectedDay] = useState("");
+        const [selectedYear, setSelectedYear] = useState("");
 
-            useEffect(() => {
-                try {
-                    const savedExpenses = JSON.parse(localStorage.getItem('expenses')) || [];
-                    setExpenses(savedExpenses);
-                    // Mặc định chọn tháng hiện tại
-                    const currentMonth = new Date().toLocaleDateString('en-US', { month: '2-digit', year: 'numeric' });
-                    setSelectedMonth(currentMonth.replace('/', '/'));
-                } catch (e) {
-                    console.error('Error loading expenses:', e);
-                }
-            }, []);
+        // Chuẩn hóa định dạng ngày: DD/MM/YYYY
+        const getFormattedDate = (date) =>
+          date.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          });
+        const currentDate = getFormattedDate(new Date());
 
-            useEffect(() => {
-                try {
-                    localStorage.setItem('expenses', JSON.stringify(expenses));
-                } catch (e) {
-                    console.error('Error saving expenses:', e);
-                }
-            }, [expenses]);
-
-            const addExpense = () => {
-                if (name.trim() && amount > 0) {
-                    const newExpense = {
-                        id: Date.now(),
-                        name,
-                        amount: parseFloat(amount),
-                        category,
-                        date: new Date().toLocaleDateString()
-                    };
-                    setExpenses([...expenses, newExpense]);
-                    setName('');
-                    setAmount('');
-                    setCategory('Food');
-                } else {
-                    alert('Vui lòng nhập tên và số tiền hợp lệ!');
-                }
-            };
-
-            const deleteExpense = (id) => {
-                setExpenses(expenses.filter(expense => expense.id !== id));
-            };
-
-            const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-
-            // Thống kê theo ngày
-            const dailyStats = expenses.reduce((acc, expense) => {
-                acc[expense.date] = (acc[expense.date] || 0) + expense.amount;
-                return acc;
-            }, {});
-
-            // Thống kê theo tháng và danh sách tháng
-            const monthlyStats = expenses.reduce((acc, expense) => {
-                const [day, month, year] = expense.date.split('/');
-                const monthKey = `${month}/${year}`;
-                acc[monthKey] = (acc[monthKey] || 0) + expense.amount;
-                return acc;
-            }, {});
-
-            const monthOptions = Object.keys(monthlyStats).sort((a, b) => {
-                const [monthA, yearA] = a.split('/');
-                const [monthB, yearB] = b.split('/');
-                return yearB - yearA || monthB - monthA;
+        useEffect(() => {
+          try {
+            // Load chi tiêu từ localStorage
+            let savedExpenses =
+              JSON.parse(localStorage.getItem("expenses")) || [];
+            // Chuẩn hóa định dạng ngày
+            savedExpenses = savedExpenses.map((expense) => ({
+              ...expense,
+              date: expense.date.includes("/")
+                ? expense.date
+                : getFormattedDate(new Date(expense.date)),
+            }));
+            // Sắp xếp mới nhất lên đầu
+            savedExpenses.sort((a, b) => b.id - a.id);
+            setExpenses(savedExpenses);
+            // Mặc định chọn ngày hiện tại, tháng hiện tại, năm hiện tại
+            setSelectedDay(currentDate);
+            const currentMonth = new Date().toLocaleDateString("en-GB", {
+              month: "2-digit",
+              year: "numeric",
             });
+            setSelectedMonth(currentMonth);
+            const currentYear = new Date().getFullYear().toString();
+            setSelectedYear(currentYear);
+          } catch (e) {
+            console.error("Error loading expenses:", e);
+          }
+        }, []);
 
-            // Lọc chi tiêu theo tháng được chọn
-            const filteredExpenses = selectedMonth
-                ? expenses.filter(expense => {
-                      const [day, month, year] = expense.date.split('/');
-                      return `${month}/${year}` === selectedMonth;
-                  })
-                : [];
+        useEffect(() => {
+          try {
+            localStorage.setItem("expenses", JSON.stringify(expenses));
+          } catch (e) {
+            console.error("Error saving expenses:", e);
+          }
+        }, [expenses]);
 
-            const selectedMonthTotal = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-
-            // Thống kê theo năm
-            const yearlyStats = expenses.reduce((acc, expense) => {
-                const [day, month, year] = expense.date.split('/');
-                acc[year] = (acc[year] || 0) + expense.amount;
-                return acc;
-            }, {});
-
-            return React.createElement(
-                'div',
-                { className: 'container' },
-                React.createElement('h1', null, 'Quản Lý Chi Tiêu'),
-                React.createElement(
-                    'div',
-                    { className: 'tabs' },
-                    React.createElement(
-                        'div',
-                        {
-                            className: activeTab === 'list' ? 'tab active' : 'tab',
-                            onClick: () => setActiveTab('list')
-                        },
-                        'Thêm'
-                    ),
-                    React.createElement(
-                        'div',
-                        {
-                            className: activeTab === 'daily' ? 'tab active' : 'tab',
-                            onClick: () => setActiveTab('daily')
-                        },
-                        'Ngày'
-                    ),
-                    React.createElement(
-                        'div',
-                        {
-                            className: activeTab === 'monthly' ? 'tab active' : 'tab',
-                            onClick: () => setActiveTab('monthly')
-                        },
-                        'Tháng'
-                    ),
-                    React.createElement(
-                        'div',
-                        {
-                            className: activeTab === 'yearly' ? 'tab active' : 'tab',
-                            onClick: () => setActiveTab('yearly')
-                        },
-                        'Năm'
-                    )
-                ),
-                activeTab === 'list' && React.createElement(
-                    'div',
-                    null,
-                    React.createElement(
-                        'div',
-                        { className: 'form-group' },
-                        React.createElement('input', {
-                            type: 'text',
-                            value: name,
-                            onChange: (e) => setName(e.target.value),
-                            placeholder: 'Tên chi tiêu (VD: Cà phê)'
-                        }),
-                        React.createElement('input', {
-                            type: 'number',
-                            value: amount,
-                            onChange: (e) => setAmount(e.target.value),
-                            placeholder: 'Số tiền (VND)'
-                        }),
-                        React.createElement(
-                            'select',
-                            {
-                                value: category,
-                                onChange: (e) => setCategory(e.target.value)
-                            },
-                            React.createElement('option', { value: 'Food' }, 'Ăn uống'),
-                            React.createElement('option', { value: 'Transport' }, 'Di chuyển'),
-                            React.createElement('option', { value: 'Entertainment' }, 'Giải trí'),
-                            React.createElement('option', { value: 'Other' }, 'Khác')
-                        ),
-                        React.createElement('button', { onClick: addExpense }, 'Thêm Chi Tiêu')
-                    ),
-                    React.createElement(
-                        'div',
-                        { className: 'expense-list' },
-                        React.createElement('h2', null, 'Danh Sách Chi Tiêu'),
-                        expenses.length === 0
-                            ? React.createElement('p', { className: 'no-expenses' }, 'Chưa có chi tiêu nào!')
-                            : React.createElement(
-                                  'div',
-                                  null,
-                                  expenses.map(expense =>
-                                      React.createElement(
-                                          'div',
-                                          { key: expense.id, className: 'expense-item' },
-                                          React.createElement(
-                                              'div',
-                                              null,
-                                              React.createElement('p', { className: 'name' }, expense.name),
-                                              React.createElement(
-                                                  'p',
-                                                  { className: 'category' },
-                                                  `${expense.category} - ${expense.date}`
-                                              )
-                                          ),
-                                          React.createElement(
-                                              'div',
-                                              null,
-                                              React.createElement(
-                                                  'p',
-                                                  { className: 'amount' },
-                                                  `${expense.amount.toLocaleString()} VND`
-                                              ),
-                                              React.createElement(
-                                                  'span',
-                                                  {
-                                                      className: 'delete',
-                                                      onClick: () => deleteExpense(expense.id)
-                                                  },
-                                                  'Xóa'
-                                              )
-                                          )
-                                      )
-                                  )
-                              )
-                    )
-                ),
-                activeTab === 'daily' && React.createElement(
-                    'div',
-                    { className: 'stats-list' },
-                    React.createElement('h2', null, 'Thống Kê Theo Ngày'),
-                    Object.keys(dailyStats).length === 0
-                        ? React.createElement('p', { className: 'no-stats' }, 'Chưa có thống kê nào!')
-                        : React.createElement(
-                              'div',
-                              null,
-                              Object.entries(dailyStats).map(([date, total]) =>
-                                  React.createElement(
-                                      'div',
-                                      { key: date, className: 'stats-item' },
-                                      React.createElement('p', null, date),
-                                      React.createElement(
-                                          'p',
-                                          { className: 'amount' },
-                                          `${total.toLocaleString()} VND`
-                                      )
-                                  )
-                              )
-                          )
-                ),
-                activeTab === 'monthly' && React.createElement(
-                    'div',
-                    { className: 'stats-list' },
-                    React.createElement('h2', null, 'Thống Kê Theo Tháng'),
-                    monthOptions.length === 0
-                        ? React.createElement('p', { className: 'no-stats' }, 'Chưa có thống kê nào!')
-                        : React.createElement(
-                              'div',
-                              null,
-                              React.createElement(
-                                  'select',
-                                  {
-                                      value: selectedMonth,
-                                      onChange: (e) => setSelectedMonth(e.target.value),
-                                      className: 'form-group'
-                                  },
-                                  monthOptions.map(month =>
-                                      React.createElement('option', { key: month, value: month }, month)
-                                  )
-                              ),
-                              filteredExpenses.length === 0
-                                  ? React.createElement('p', { className: 'no-stats' }, 'Không có chi tiêu trong tháng này!')
-                                  : React.createElement(
-                                        'div',
-                                        null,
-                                        filteredExpenses.map(expense =>
-                                            React.createElement(
-                                                'div',
-                                                { key: expense.id, className: 'expense-item' },
-                                                React.createElement(
-                                                    'div',
-                                                    null,
-                                                    React.createElement('p', { className: 'name' }, expense.name),
-                                                    React.createElement(
-                                                        'p',
-                                                        { className: 'category' },
-                                                        `${expense.category} - ${expense.date}`
-                                                    )
-                                                ),
-                                                React.createElement(
-                                                    'div',
-                                                    null,
-                                                    React.createElement(
-                                                        'p',
-                                                        { className: 'amount' },
-                                                        `${expense.amount.toLocaleString()} VND`
-                                                    )
-                                                )
-                                            )
-                                        ),
-                                        React.createElement(
-                                            'p',
-                                            { className: 'total' },
-                                            `Tổng tháng ${selectedMonth}: `,
-                                            React.createElement(
-                                                'span',
-                                                null,
-                                                `${selectedMonthTotal.toLocaleString()} VND`
-                                            )
-                                        )
-                                    )
-                          )
-                ),
-                activeTab === 'yearly' && React.createElement(
-                    'div',
-                    { className: 'stats-list' },
-                    React.createElement('h2', null, 'Thống Kê Theo Năm'),
-                    Object.keys(yearlyStats).length === 0
-                        ? React.createElement('p', { className: 'no-stats' }, 'Chưa có thống kê nào!')
-                        : React.createElement(
-                              'div',
-                              null,
-                              Object.entries(yearlyStats).map(([year, total]) =>
-                                  React.createElement(
-                                      'div',
-                                      { key: year, className: 'stats-item' },
-                                      React.createElement('p', null, year),
-                                      React.createElement(
-                                          'p',
-                                          { className: 'amount' },
-                                          `${total.toLocaleString()} VND`
-                                      )
-                                  )
-                              )
-                          )
-                ),
-                activeTab !== 'monthly' && React.createElement(
-                    'div',
-                    { className: 'total' },
-                    React.createElement(
-                        'p',
-                        null,
-                        'Tổng: ',
-                        React.createElement('span', null, `${total.toLocaleString()} VND`)
-                    )
-                )
-            );
+        const addExpense = () => {
+          if (name.trim() && amount > 0) {
+            const newExpense = {
+              id: Date.now(),
+              name,
+              amount: parseFloat(amount),
+              category,
+              date: currentDate,
+            };
+            // Thêm vào đầu danh sách
+            setExpenses([newExpense, ...expenses]);
+            setName("");
+            setAmount("");
+            setCategory("Food");
+          } else {
+            alert("Vui lòng nhập tên và số tiền hợp lệ!");
+          }
         };
 
-        const root = createRoot(document.getElementById('root'));
-        root.render(React.createElement(ExpenseTracker));
+        const deleteExpense = (id) => {
+          setExpenses(expenses.filter((expense) => expense.id !== id));
+        };
+
+        // Tổng chi tiêu của ngày hiện tại
+        const todayTotal = expenses
+          .filter((expense) => expense.date === currentDate)
+          .reduce((sum, expense) => sum + expense.amount, 0);
+
+        // Thống kê theo ngày
+        const dailyStats = expenses.reduce((acc, expense) => {
+          acc[expense.date] = (acc[expense.date] || 0) + expense.amount;
+          return acc;
+        }, {});
+        const dayOptions = Object.keys(dailyStats).sort(
+          (a, b) =>
+            new Date(b.split("/").reverse().join("-")) -
+            new Date(a.split("/").reverse().join("-"))
+        );
+
+        // Lọc chi tiêu theo ngày được chọn
+        const filteredDayExpenses = selectedDay
+          ? expenses
+              .filter((expense) => expense.date === selectedDay)
+              .sort((a, b) => b.id - a.id)
+          : [];
+        const selectedDayTotal = filteredDayExpenses.reduce(
+          (sum, expense) => sum + expense.amount,
+          0
+        );
+
+        // Thống kê theo tháng
+        const monthlyStats = expenses.reduce((acc, expense) => {
+          const [day, month, year] = expense.date.split("/");
+          if (parseInt(month) > 12 || parseInt(month) < 1) {
+            console.warn(`Invalid month in expense: ${expense.date}`);
+            return acc;
+          }
+          const monthKey = `${month}/${year}`;
+          acc[monthKey] = (acc[monthKey] || 0) + expense.amount;
+          return acc;
+        }, {});
+        const monthOptions = Object.keys(monthlyStats).sort((a, b) => {
+          const [monthA, yearA] = a.split("/");
+          const [monthB, yearB] = b.split("/");
+          return yearB - yearA || monthB - monthA;
+        });
+
+        // Thống kê theo năm
+        const yearlyStats = expenses.reduce((acc, expense) => {
+          const [day, month, year] = expense.date.split("/");
+          acc[year] = (acc[year] || 0) + expense.amount;
+          return acc;
+        }, {});
+        const yearOptions = Object.keys(yearlyStats).sort((a, b) => b - a);
+
+        return React.createElement(
+          "div",
+          { className: "container" },
+          React.createElement("h1", null, "Quản Lý Chi Tiêu"),
+          React.createElement(
+            "div",
+            { className: "tabs" },
+            React.createElement(
+              "div",
+              {
+                className: activeTab === "list" ? "tab active" : "tab",
+                onClick: () => setActiveTab("list"),
+              },
+              "Danh Sách"
+            ),
+            React.createElement(
+              "div",
+              {
+                className: activeTab === "daily" ? "tab active" : "tab",
+                onClick: () => setActiveTab("daily"),
+              },
+              "Ngày"
+            ),
+            React.createElement(
+              "div",
+              {
+                className: activeTab === "monthly" ? "tab active" : "tab",
+                onClick: () => setActiveTab("monthly"),
+              },
+              "Tháng"
+            ),
+            React.createElement(
+              "div",
+              {
+                className: activeTab === "yearly" ? "tab active" : "tab",
+                onClick: () => setActiveTab("yearly"),
+              },
+              "Năm"
+            )
+          ),
+          activeTab === "list" &&
+            React.createElement(
+              "div",
+              null,
+              React.createElement(
+                "div",
+                { className: "form-group" },
+                React.createElement("input", {
+                  type: "text",
+                  value: name,
+                  onChange: (e) => setName(e.target.value),
+                  placeholder: "Tên chi tiêu (VD: Cà phê)",
+                }),
+                React.createElement("input", {
+                  type: "number",
+                  value: amount,
+                  onChange: (e) => setAmount(e.target.value),
+                  placeholder: "Số tiền (VND)",
+                }),
+                React.createElement(
+                  "select",
+                  {
+                    value: category,
+                    onChange: (e) => setCategory(e.target.value),
+                  },
+                  React.createElement("option", { value: "Food" }, "Ăn uống"),
+                  React.createElement(
+                    "option",
+                    { value: "Transport" },
+                    "Di chuyển"
+                  ),
+                  React.createElement(
+                    "option",
+                    { value: "Entertainment" },
+                    "Giải trí"
+                  ),
+                  React.createElement("option", { value: "Other" }, "Khác")
+                ),
+                React.createElement(
+                  "button",
+                  { onClick: addExpense },
+                  "Thêm Chi Tiêu"
+                )
+              ),
+              React.createElement(
+                "div",
+                { className: "expense-list" },
+                React.createElement("h2", null, "Danh Sách Chi Tiêu"),
+                expenses.length === 0
+                  ? React.createElement(
+                      "p",
+                      { className: "no-expenses" },
+                      "Chưa có chi tiêu nào!"
+                    )
+                  : React.createElement(
+                      "div",
+                      null,
+                      expenses.map((expense) =>
+                        React.createElement(
+                          "div",
+                          { key: expense.id, className: "expense-item" },
+                          React.createElement(
+                            "div",
+                            null,
+                            React.createElement(
+                              "p",
+                              { className: "name" },
+                              expense.name
+                            ),
+                            React.createElement(
+                              "p",
+                              { className: "category" },
+                              `${expense.category} - ${expense.date}`
+                            )
+                          ),
+                          React.createElement(
+                            "div",
+                            null,
+                            React.createElement(
+                              "p",
+                              { className: "amount" },
+                              `${expense.amount.toLocaleString()} VND`
+                            ),
+                            React.createElement(
+                              "span",
+                              {
+                                className: "delete",
+                                onClick: () => deleteExpense(expense.id),
+                              },
+                              "Xóa"
+                            )
+                          )
+                        )
+                      )
+                    )
+              )
+            ),
+          activeTab === "daily" &&
+            React.createElement(
+              "div",
+              { className: "stats-list" },
+              React.createElement("h2", null, "Thống Kê Theo Ngày"),
+              dayOptions.length === 0
+                ? React.createElement(
+                    "p",
+                    { className: "no-stats" },
+                    "Chưa có thống kê nào!"
+                  )
+                : React.createElement(
+                    "div",
+                    null,
+                    React.createElement(
+                      "select",
+                      {
+                        value: selectedDay,
+                        onChange: (e) => setSelectedDay(e.target.value),
+                        className: "form-group",
+                      },
+                      dayOptions.map((day) =>
+                        React.createElement(
+                          "option",
+                          { key: day, value: day },
+                          day
+                        )
+                      )
+                    ),
+                    filteredDayExpenses.length === 0
+                      ? React.createElement(
+                          "p",
+                          { className: "no-stats" },
+                          "Không có chi tiêu trong ngày này!"
+                        )
+                      : React.createElement(
+                          "div",
+                          null,
+                          filteredDayExpenses.map((expense) =>
+                            React.createElement(
+                              "div",
+                              { key: expense.id, className: "expense-item" },
+                              React.createElement(
+                                "div",
+                                null,
+                                React.createElement(
+                                  "p",
+                                  { className: "name" },
+                                  expense.name
+                                ),
+                                React.createElement(
+                                  "p",
+                                  { className: "category" },
+                                  `${expense.category} - ${expense.date}`
+                                )
+                              ),
+                              React.createElement(
+                                "div",
+                                null,
+                                React.createElement(
+                                  "p",
+                                  { className: "amount" },
+                                  `${expense.amount.toLocaleString()} VND`
+                                )
+                              )
+                            )
+                          ),
+                          React.createElement(
+                            "p",
+                            { className: "total" },
+                            `Tổng ngày ${selectedDay}: `,
+                            React.createElement(
+                              "span",
+                              null,
+                              `${selectedDayTotal.toLocaleString()} VND`
+                            )
+                          )
+                        )
+                  )
+            ),
+          activeTab === "monthly" &&
+            React.createElement(
+              "div",
+              { className: "stats-list" },
+              React.createElement("h2", null, "Thống Kê Theo Tháng"),
+              monthOptions.length === 0
+                ? React.createElement(
+                    "p",
+                    { className: "no-stats" },
+                    "Chưa có thống kê nào!"
+                  )
+                : React.createElement(
+                    "div",
+                    null,
+                    React.createElement(
+                      "select",
+                      {
+                        value: selectedMonth,
+                        onChange: (e) => setSelectedMonth(e.target.value),
+                        className: "form-group",
+                      },
+                      monthOptions.map((month) =>
+                        React.createElement(
+                          "option",
+                          { key: month, value: month },
+                          month
+                        )
+                      )
+                    ),
+                    React.createElement(
+                      "div",
+                      null,
+                      monthOptions.map(
+                        (month) =>
+                          month === selectedMonth &&
+                          React.createElement(
+                            "div",
+                            { key: month, className: "stats-item" },
+                            React.createElement("p", null, month),
+                            React.createElement(
+                              "p",
+                              { className: "amount" },
+                              `${monthlyStats[month].toLocaleString()} VND`
+                            )
+                          )
+                      )
+                    )
+                  )
+            ),
+          activeTab === "yearly" &&
+            React.createElement(
+              "div",
+              { className: "stats-list" },
+              React.createElement("h2", null, "Thống Kê Theo Năm"),
+              yearOptions.length === 0
+                ? React.createElement(
+                    "p",
+                    { className: "no-stats" },
+                    "Chưa có thống kê nào!"
+                  )
+                : React.createElement(
+                    "div",
+                    null,
+                    React.createElement(
+                      "select",
+                      {
+                        value: selectedYear,
+                        onChange: (e) => setSelectedYear(e.target.value),
+                        className: "form-group",
+                      },
+                      yearOptions.map((year) =>
+                        React.createElement(
+                          "option",
+                          { key: year, value: year },
+                          year
+                        )
+                      )
+                    ),
+                    React.createElement(
+                      "div",
+                      null,
+                      yearOptions.map(
+                        (year) =>
+                          year === selectedYear &&
+                          React.createElement(
+                            "div",
+                            { key: year, className: "stats-item" },
+                            React.createElement("p", null, year),
+                            React.createElement(
+                              "p",
+                              { className: "amount" },
+                              `${yearlyStats[year].toLocaleString()} VND`
+                            )
+                          )
+                      )
+                    )
+                  )
+            ),
+          activeTab === "list" &&
+            React.createElement(
+              "div",
+              { className: "total" },
+              React.createElement(
+                "p",
+                null,
+                `Tổng hôm nay (${currentDate}): `,
+                React.createElement(
+                  "span",
+                  null,
+                  `${todayTotal.toLocaleString()} VND`
+                )
+              )
+            )
+        );
+      };
+
+      const root = createRoot(document.getElementById("root"));
+      root.render(React.createElement(ExpenseTracker));
     </script>
-</body>
+  </body>
 </html>
