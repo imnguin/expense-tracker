@@ -152,6 +152,7 @@
         const [name, setName] = useState("");
         const [amount, setAmount] = useState("");
         const [category, setCategory] = useState("Food");
+        const [date, setDate] = useState("");
         const [activeTab, setActiveTab] = useState("list");
         const [selectedMonth, setSelectedMonth] = useState("");
         const [selectedDay, setSelectedDay] = useState("");
@@ -165,6 +166,13 @@
             year: "numeric",
           });
         const currentDate = getFormattedDate(new Date());
+
+        // Chuyển YYYY-MM-DD sang DD/MM/YYYY
+        const formatInputDate = (inputDate) => {
+          if (!inputDate) return currentDate;
+          const [year, month, day] = inputDate.split("-");
+          return `${day}/${month}/${year}`;
+        };
 
         useEffect(() => {
           try {
@@ -190,6 +198,8 @@
             setSelectedMonth(currentMonth);
             const currentYear = new Date().getFullYear().toString();
             setSelectedYear(currentYear);
+            // Đặt ngày mặc định cho input date
+            setDate(new Date().toISOString().split("T")[0]);
           } catch (e) {
             console.error("Error loading expenses:", e);
           }
@@ -204,21 +214,22 @@
         }, [expenses]);
 
         const addExpense = () => {
-          if (name.trim() && amount > 0) {
+          if (name.trim() && amount > 0 && date) {
             const newExpense = {
               id: Date.now(),
               name,
               amount: parseFloat(amount),
               category,
-              date: currentDate,
+              date: formatInputDate(date),
             };
             // Thêm vào đầu danh sách
             setExpenses([newExpense, ...expenses]);
             setName("");
             setAmount("");
             setCategory("Food");
+            setDate(new Date().toISOString().split("T")[0]);
           } else {
-            alert("Vui lòng nhập tên và số tiền hợp lệ!");
+            alert("Vui lòng nhập tên, số tiền và ngày hợp lệ!");
           }
         };
 
@@ -299,7 +310,7 @@
                 className: activeTab === "daily" ? "tab active" : "tab",
                 onClick: () => setActiveTab("daily"),
               },
-              "Ngày"
+              "Theo Ngày"
             ),
             React.createElement(
               "div",
@@ -307,7 +318,7 @@
                 className: activeTab === "monthly" ? "tab active" : "tab",
                 onClick: () => setActiveTab("monthly"),
               },
-              "Tháng"
+              "Theo Tháng"
             ),
             React.createElement(
               "div",
@@ -315,7 +326,7 @@
                 className: activeTab === "yearly" ? "tab active" : "tab",
                 onClick: () => setActiveTab("yearly"),
               },
-              "Năm"
+              "Theo Năm"
             )
           ),
           activeTab === "list" &&
@@ -336,6 +347,11 @@
                   value: amount,
                   onChange: (e) => setAmount(e.target.value),
                   placeholder: "Số tiền (VND)",
+                }),
+                React.createElement("input", {
+                  type: "date",
+                  value: date,
+                  onChange: (e) => setDate(e.target.value),
                 }),
                 React.createElement(
                   "select",
