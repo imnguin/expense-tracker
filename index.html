@@ -292,7 +292,7 @@
         return React.createElement(
           "div",
           { className: "container" },
-          React.createElement("h1", null, "Quản Lý Chi Tiêu"),
+          React.createElement("h1", null, "Thông tin chi tiêu"),
           React.createElement(
             "div",
             { className: "tabs" },
@@ -302,7 +302,7 @@
                 className: activeTab === "list" ? "tab active" : "tab",
                 onClick: () => setActiveTab("list"),
               },
-              "Danh Sách"
+              "Thêm"
             ),
             React.createElement(
               "div",
@@ -310,7 +310,7 @@
                 className: activeTab === "daily" ? "tab active" : "tab",
                 onClick: () => setActiveTab("daily"),
               },
-              "Theo Ngày"
+              "Ngày"
             ),
             React.createElement(
               "div",
@@ -318,7 +318,7 @@
                 className: activeTab === "monthly" ? "tab active" : "tab",
                 onClick: () => setActiveTab("monthly"),
               },
-              "Theo Tháng"
+              "Tháng"
             ),
             React.createElement(
               "div",
@@ -326,7 +326,7 @@
                 className: activeTab === "yearly" ? "tab active" : "tab",
                 onClick: () => setActiveTab("yearly"),
               },
-              "Theo Năm"
+              "Năm"
             )
           ),
           activeTab === "list" &&
@@ -375,18 +375,18 @@
                 React.createElement(
                   "button",
                   { onClick: addExpense },
-                  "Thêm Chi Tiêu"
+                  "Thêm"
                 )
               ),
               React.createElement(
                 "div",
                 { className: "expense-list" },
-                React.createElement("h2", null, "Danh Sách Chi Tiêu"),
+                React.createElement("h2", null, "Lịch sử"),
                 expenses.length === 0
                   ? React.createElement(
                       "p",
                       { className: "no-expenses" },
-                      "Chưa có chi tiêu nào!"
+                      "Lịch sử trống!"
                     )
                   : React.createElement(
                       "div",
